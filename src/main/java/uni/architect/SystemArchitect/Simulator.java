@@ -8,9 +8,11 @@ import uni.architect.SystemArchitect.model.Request;
 
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Scanner;
 
 
 public class Simulator {
+    private final Scanner scanner = new Scanner(System.in);
 
     private final List<Generator> generators;
     private final List<Worker> workers;
@@ -20,6 +22,8 @@ public class Simulator {
     private int requestCounter = 0;
     private int declinedRequests = 0;
     private int workerPointer = 0;
+    private boolean auto = true;
+    private boolean needPrint = true;
 
     // Track the current request for each event
     private Request currentRequest = null;
@@ -27,10 +31,12 @@ public class Simulator {
 
     private final PriorityQueue<Event> eventQueue = new PriorityQueue<>();
 
-    public Simulator(List<Generator> generators, List<Worker> workers, Buffer buffer) {
+    public Simulator(List<Generator> generators, List<Worker> workers, Buffer buffer, boolean auto, boolean needPrint) {
         this.generators = generators;
         this.workers = workers;
         this.buffer = buffer;
+        this.auto = auto;
+        this.needPrint = needPrint;
     }
 
     private boolean chooseWorker() {
@@ -48,7 +54,13 @@ public class Simulator {
     public void runSimulation(double simulationTime) {
         eventQueue.add(new Event(Event.EventType.END, simulationTime, -1));
 
-        printTableHeader();
+        if (needPrint) {
+            printTableHeader();
+        }
+
+        Event startSimulation = new Event(Event.EventType.START, 0.0, -1);
+        eventQueue.add(startSimulation);
+        printStartRow();
 
         for (Generator generator : generators) {
             eventQueue.add(new Event(Event.EventType.GENERATION, generator.getNextGenTime(), generator.getNumber()));
@@ -66,10 +78,17 @@ public class Simulator {
                 case Event.EventType.COMPLETION -> handleCompletionEvent(event.getObjectNumber());
             }
 
-            printEventRow(event);
+            if (needPrint) {
+                printEventRow(event);
+                if (!auto) {
+                    scanner.nextLine();  // add pause before each step
+                }
+            }
         }
-        printEndRow();
-        printTableFooter();
+        if (needPrint) {
+            printEndRow();
+            printTableFooter();
+        }
     }
 
     private void handleGenerationEvent(int genNumber) {
@@ -113,7 +132,7 @@ public class Simulator {
     }
 
     private void printTableHeader() {
-        System.out.println("╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════");
+        System.out.println("╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════");
         System.out.println("║                                                  Календарь событий                                                                       ");
         System.out.println("╠═══════════════╦═══════════╦══════════════╦═══════════════╦═════════════════╦══════════════════════════════════╦════════════════════════════");
         System.out.println("║   Событие     ║   Время   ║ Число заявок ║ Число отказов ║  Номер заявки   ║    Состояние прибора             ║  Состояние буфера          ");
@@ -134,6 +153,39 @@ public class Simulator {
         System.out.printf("║ %-13s ║   %6.2f  ║    %5d     ║     %5d     ║  %-14s ║  %-31s ║ %-26s %n",
                 eventName, event.getTime(), requestCounter, declinedRequests,
                 requestNum, workerState, buffer.getState());
+
+        printSysState();
+    }
+
+    private void printSysState() {
+        StringBuilder deviceStates = new StringBuilder();
+        workers.forEach(worker -> {
+            if (worker.isBusy() && worker.getCurRequest() != null) {
+                deviceStates.append("П").append(worker.getNumber() + 1)
+                        .append(": ").append(worker.getCurRequest().getNumber())
+                        .append(" до ").append(String.format("%.2f", worker.getCompletionTime())).append(" ");
+            } else {
+                deviceStates.append("П").append(worker.getNumber() + 1).append(": свободен ");
+            }
+        });
+
+        StringBuilder closestEventTimes = new StringBuilder();
+        eventQueue.forEach(eventQ ->
+                closestEventTimes.append(eventQ.getType() == Event.EventType.GENERATION ? "И" : "П").append(eventQ.getObjectNumber() + 1)
+                        .append(": ").append(String.format("%.2f", eventQ.getTime())).append(" "));
+
+        System.out.println("╠═══════════════╬═══════════╩══════════════╩═══════════════╩═════════════════╩══════════════════════════════════╩════════════════════════════");
+        System.out.println("║ Приборы       ║ " + deviceStates.toString());
+        System.out.println("╠═══════════════╬════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════");
+        System.out.println("║ События       ║ " + closestEventTimes.toString());
+        System.out.println("╠═══════════════╬═══════════╦══════════════╦═══════════════╦═════════════════╦══════════════════════════════════╦════════════════════════════");
+
+    }
+
+    private void printStartRow() {
+        System.out.printf("║ %-13s ║   %6.2f  ║    %5d     ║  ",
+                "Начало мод.", currentTime, requestCounter);
+        printSysState();
     }
 
     private void printEndRow() {

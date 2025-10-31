@@ -102,7 +102,7 @@ public class Buffer {
         StringBuilder sb = new StringBuilder();
         sb.append("[");
         for (Integer key : requestPackages.keySet()) {
-            sb.append(key).append(": ");
+            sb.append(key + 1).append(": ");
             Deque<Request> queue = requestPackages.get(key);
             for (Request req : queue) {
                 sb.append(req.getNumber()).append(", ");

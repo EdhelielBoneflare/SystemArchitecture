@@ -23,6 +23,6 @@ public class Generator {
     public Request generateRequest(double curTime) {
         nextGenTime = curTime + genInterval;
         genCount++;
-        return new Request(number + "." + (genCount), number);
+        return new Request((number + 1) + "." + (genCount), number);
     }
 }

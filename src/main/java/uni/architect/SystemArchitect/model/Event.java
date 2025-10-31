@@ -7,6 +7,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public class Event implements Comparable<Event> {
     public enum EventType {
+        START,
         GENERATION,
         COMPLETION,
         END
@@ -14,7 +15,7 @@ public class Event implements Comparable<Event> {
 
     private EventType type;
     private double time;
-    private int objectNumber;
+    private Integer objectNumber;
 
     @Override
     public int compareTo(Event other) {
