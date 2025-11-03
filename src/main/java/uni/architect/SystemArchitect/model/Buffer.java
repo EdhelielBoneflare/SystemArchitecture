@@ -28,12 +28,13 @@ public class Buffer {
         return currentSize >= capacity;
     }
 
-    public void addRequest(Request request) {
+    public Request addRequest(Request request) {
         if (currentSize < capacity) {
             addRequestNoCheck(request);
-            return;
+            return null;
         }
 
+        Request declined = request;
         List<Integer> genKeys = requestPackages.keySet().stream()
                 .filter(k -> k > request.getGeneratorNumber())
                 .sorted(Comparator.reverseOrder())
@@ -46,16 +47,17 @@ public class Buffer {
 
             if (genKey > request.getGeneratorNumber()) {
                 Deque<Request> deque = requestPackages.get(genKey);
-                deque.removeLast();
+                declined = deque.removeLast();
                 currentSize--;
                 if (deque.isEmpty()) {
                     requestPackages.remove(genKey);
                     recalculateCurrentPriorityPackage();
                 }
                 addRequestNoCheck(request);
-                return;
+                break;
             }
         }
+        return declined;
     }
 
     private void addRequestNoCheck(Request request) {

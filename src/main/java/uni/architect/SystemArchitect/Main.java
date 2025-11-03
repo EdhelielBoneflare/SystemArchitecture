@@ -9,18 +9,26 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Main {
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
+    public static final Scanner scanner = new Scanner(System.in);
 
+    public static void main(String[] args) {
+        System.out.println("Стандартные параметры (true/false):");
+        boolean standard = scanner.nextBoolean();
+
+        if (standard) {
+            start(false, -1, true, 3,
+                    7, 10, List.of(2.0, 1.0, 0.5),
+                    2);
+        } else {
+            readParamsAndStart();
+        }
+
+        scanner.close();
+    }
+
+    public static void readParamsAndStart() {
         System.out.println("Отображение UI (true/false): ");
         boolean needPrint = scanner.nextBoolean();
-
-        if (needPrint) {
-            System.out.println("╔═══════════════════════════════════════════════════════════╗");
-            System.out.println("║     Система массового обслуживания - Симулятор            ║");
-            System.out.println("╚═══════════════════════════════════════════════════════════╝");
-            System.out.println();
-        }
 
         System.out.print("Введите время моделирования: ");
         double simulationTime = scanner.nextDouble();
@@ -39,46 +47,40 @@ public class Main {
 
         System.out.println();
 
-        List<Generator> generators = new ArrayList<>();
+        List<Double> genIntervals = new ArrayList<>();
         for (int i = 0; i < numGenerators; i++) {
             System.out.printf("Источник %d:%n", i + 1);
             System.out.print("  Интервал генерации: ");
-            double genInterval = scanner.nextDouble();
-            generators.add(new Generator(i, genInterval, 0));
+            genIntervals.add(scanner.nextDouble());
         }
 
         System.out.println();
+
+        System.out.print("Максимальное время обработки заявки прибором: ");
+        double maxProcessingTime = scanner.nextDouble();
+
+        System.out.println();
+
+        start(needPrint, simulationTime, auto, numGenerators, numWorkers, bufferCapacity, genIntervals, maxProcessingTime);
+    }
+
+    private static void start(boolean needPrint, double simulationTime, boolean auto, int numGenerators, int numWorkers,
+                              int bufferCapacity, List<Double> genIntervals, double maxProcessingTime) {
+        List<Generator> generators = new ArrayList<>();
+
+        for (int i = 0; i < numGenerators; i++) {
+            generators.add(new Generator(i, genIntervals.get(i), 0));
+        }
 
         List<Worker> workers = new ArrayList<>();
         for (int i = 0; i < numWorkers; i++) {
-            System.out.printf("Прибор %d:%n", i + 1);
-            System.out.print("  Максимальное время обработки: ");
-            double maxProcessingTime = scanner.nextDouble();
-            workers.add(new Worker(i, false, 0.0, maxProcessingTime, null));
+            workers.add(new Worker(i, false, 0.0, maxProcessingTime, null, 0));
         }
-
-        System.out.println();
 
         Buffer buffer = new Buffer(bufferCapacity);
 
         Simulator simulator = new Simulator(generators, workers, buffer, auto, needPrint);
 
-        if (needPrint) {
-            System.out.println("╔═════════════════════════════════════════════════════════════════════════════╗");
-            System.out.println("║                         Начало моделирования...                             ║");
-            System.out.println("╚═════════════════════════════════════════════════════════════════════════════╝");
-            System.out.println();
-        }
-
         simulator.runSimulation(simulationTime);
-
-        {
-            System.out.println();
-            System.out.println("╔═════════════════════════════════════════════════════════════════════════════╗");
-            System.out.println("║                         Моделирование завершено!                            ║");
-            System.out.println("╚═════════════════════════════════════════════════════════════════════════════╝");
-        }
-
-        scanner.close();
     }
 }

@@ -17,15 +17,18 @@ public class Worker {
     private double completionTime;
     private double maxProcessingTime;
     private Request curRequest;
+    private double totalWorkTime = 0;
 
-    private double getNewCompletionTime(double curTime) {
-        return curTime + rand.nextExponential() * maxProcessingTime;
+    private double getNewCompletionTime() {
+        return rand.nextExponential() * maxProcessingTime;
     }
 
     public void startProcessing(double curTime, Request request) {
         isBusy = true;
-        completionTime = getNewCompletionTime(curTime);
+        double workTime = getNewCompletionTime();
+        completionTime = curTime + workTime;
         curRequest = request;
+        totalWorkTime += workTime;
     }
 
     public void stopProcessing(double curTime) {

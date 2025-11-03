@@ -6,9 +6,7 @@ import uni.architect.SystemArchitect.model.Generator;
 import uni.architect.SystemArchitect.model.Worker;
 import uni.architect.SystemArchitect.model.Request;
 
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Scanner;
+import java.util.*;
 
 
 public class Simulator {
@@ -30,6 +28,7 @@ public class Simulator {
     private int affectedWorker = -1;
 
     private final PriorityQueue<Event> eventQueue = new PriorityQueue<>();
+    private final Map<Integer, Integer> declineTypeCounter = new HashMap<>();
 
     public Simulator(List<Generator> generators, List<Worker> workers, Buffer buffer, boolean auto, boolean needPrint) {
         this.generators = generators;
@@ -37,6 +36,8 @@ public class Simulator {
         this.buffer = buffer;
         this.auto = auto;
         this.needPrint = needPrint;
+
+        generators.forEach(gen -> declineTypeCounter.put(gen.getNumber(), 0));
     }
 
     private boolean chooseWorker() {
@@ -52,7 +53,9 @@ public class Simulator {
     }
 
     public void runSimulation(double simulationTime) {
-        eventQueue.add(new Event(Event.EventType.END, simulationTime, -1));
+        if (simulationTime >= 0) {
+            eventQueue.add(new Event(Event.EventType.END, simulationTime, -1));
+        }
 
         if (needPrint) {
             printTableHeader();
@@ -60,7 +63,9 @@ public class Simulator {
 
         Event startSimulation = new Event(Event.EventType.START, 0.0, -1);
         eventQueue.add(startSimulation);
-        printStartRow();
+        if (needPrint) {
+            printStartRow();
+        }
 
         for (Generator generator : generators) {
             eventQueue.add(new Event(Event.EventType.GENERATION, generator.getNextGenTime(), generator.getNumber()));
@@ -69,7 +74,8 @@ public class Simulator {
         while (!eventQueue.isEmpty()) {
             Event event = eventQueue.poll();
             currentTime = event.getTime();
-            if (currentTime >= simulationTime) {
+            if ((simulationTime >= 0 && currentTime >= simulationTime)
+                    ||  (simulationTime < 0 && requestCounter >= 1000)) {
                 break;
             }
 
@@ -85,10 +91,12 @@ public class Simulator {
                 }
             }
         }
+
         if (needPrint) {
             printEndRow();
             printTableFooter();
         }
+        printOptimisationResults();
     }
 
     private void handleGenerationEvent(int genNumber) {
@@ -108,11 +116,11 @@ public class Simulator {
             eventQueue.add(new Event(Event.EventType.COMPLETION, worker.getCompletionTime(), worker.getNumber()));
         } else {
             affectedWorker = -1;
-            // original simple buffer handling: count decline if buffer already full, then add (buffer decides replacement)
-            if (buffer.isFull()) {
+            Request declined = buffer.addRequest(request);
+            if (declined != null) {
                 declinedRequests++;
+                declineTypeCounter.put(declined.getGeneratorNumber(), declineTypeCounter.get(declined.getGeneratorNumber()) + 1);
             }
-            buffer.addRequest(request);
         }
     }
 
@@ -132,6 +140,10 @@ public class Simulator {
     }
 
     private void printTableHeader() {
+        System.out.println("╔═══════════════════════════════════════════════════════════╗");
+        System.out.println("║     Система массового обслуживания - Симулятор            ║");
+        System.out.println("╚═══════════════════════════════════════════════════════════╝");
+        System.out.println();
         System.out.println("╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════");
         System.out.println("║                                                  Календарь событий                                                                       ");
         System.out.println("╠═══════════════╦═══════════╦══════════════╦═══════════════╦═════════════════╦══════════════════════════════════╦════════════════════════════");
@@ -183,8 +195,8 @@ public class Simulator {
     }
 
     private void printStartRow() {
-        System.out.printf("║ %-13s ║   %6.2f  ║    %5d     ║  ",
-                "Начало мод.", currentTime, requestCounter);
+        System.out.printf("║ %-13s ║   %6.2f  ║    %5d     ║     %5s     ║  %-14s ║  %-31s ║ %-26s %n",
+                "Начало мод.", currentTime, requestCounter, "", "", "", "");
         printSysState();
     }
 
@@ -207,6 +219,39 @@ public class Simulator {
         } else {
             return workerName + ": свободен";
         }
+    }
+
+    private void printOptimisationResults() {
+        double allWorkTime = 0;
+        for (Worker w: workers) {
+            allWorkTime += w.getTotalWorkTime() - (w.getCompletionTime() - currentTime);
+        }
+        double kpd = allWorkTime/(currentTime * workers.size());
+
+        System.out.println("\n╔══════════════════════════════════════════════════════════════");
+        System.out.println("║                РЕЗУЛЬТАТЫ");
+        System.out.println("╠══════════════════════════════════════════════════════════════");
+        System.out.printf("║ Конфигурация системы: %d мест в буфере, %d приборов%n", buffer.getCapacity(), workers.size());
+        System.out.printf("║ Общее время моделирования: %.2f сек%n", currentTime);
+        System.out.printf("║ Всего заявок сгенерировано: %d%n", requestCounter);
+        System.out.printf("║ Всего отказов: %d%n", declinedRequests);
+        System.out.printf("║ Коэффициент использования системы: %.3f (требуется >= 0.75)%n", kpd);
+        System.out.println("║");
+        System.out.println("║ Вероятности отказа по источникам:");
+        for (Map.Entry<Integer, Integer> entry : declineTypeCounter.entrySet()) {
+            int sourceNum = entry.getKey();
+            int declined = entry.getValue();
+            double prob = (double) declined / requestCounter;
+            String requirement = "";
+            switch (sourceNum) {
+                case 0 -> requirement = "требуется ≤ 0.005 (0.5%)";
+                case 1 -> requirement = "требуется ≤ 0.02 (2%)";
+                case 2 -> requirement = "требуется ≤ 0.05 (5%)";
+            }
+            System.out.printf("║  Источник И%d: %d отказов, P_отк = %.4f %s%n",
+                    sourceNum + 1, declined, prob, requirement);
+        }
+        System.out.println("╚══════════════════════════════════════════════════════════════");
     }
 
 }
