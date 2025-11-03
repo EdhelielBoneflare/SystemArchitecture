@@ -2,7 +2,7 @@
 
 [![Java](https://img.shields.io/badge/Java-17+-blue.svg)](https://java.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.0-orange.svg)]()
+[![Version](https://img.shields.io/badge/Version-1.2.0-orange.svg)]()
 
 ## 📋 Оглавление
 
@@ -67,12 +67,6 @@ src/main/java/uni/architect/SystemArchitect/
 | **Выбор заявки** | Д2Б5 | Пакетная обработка по приоритетам |
 
 ## 🚀 Быстрый старт
-
-### 📋 Предварительные требования
-
-- **Java**: версия 8 или выше
-- **Среда разработки**: Intellij IDEA (рекомендуется)
-- **Система сборки**: Gradle
 
 ### 🛠️ Сборка проекта
 
