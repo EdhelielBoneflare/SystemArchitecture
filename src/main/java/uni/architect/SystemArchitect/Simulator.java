@@ -183,7 +183,7 @@ public class Simulator {
 
         StringBuilder closestEventTimes = new StringBuilder();
         eventQueue.forEach(eventQ ->
-                closestEventTimes.append(eventQ.getType() == Event.EventType.GENERATION ? "И" : "П").append(eventQ.getObjectNumber() + 1)
+                closestEventTimes.append(eventQ.getType() == Event.EventType.GENERATION ? "И" : eventQ.getType() == Event.EventType.COMPLETION ? "П" : "Конец").append(eventQ.getObjectNumber() + 1)
                         .append(": ").append(String.format("%.2f", eventQ.getTime())).append(" "));
 
         System.out.println("╠═══════════════╬═══════════╩══════════════╩═══════════════╩═════════════════╩══════════════════════════════════╩════════════════════════════");
